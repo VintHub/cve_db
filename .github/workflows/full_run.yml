@@ -72,6 +72,8 @@ jobs:
           python3 process_local.py
 
       - name: Cleanup and Commit Initial Data
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           # Remove raw repository data and temporary text file so they are not committed
           rm -rf repos/
@@ -86,4 +88,5 @@ jobs:
           
           git add .
           git commit -m "feat: Initial full CVE build"
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
           git push
