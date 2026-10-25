@@ -1,4 +1,5 @@
 name: CVE Sync
+
 on:
   schedule:
     - cron: '*/30 * * * *'
@@ -6,9 +7,18 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   sync:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -111,8 +121,6 @@ jobs:
           python3 update_cves.py
 
       - name: Cleanup and Commit
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           # 3. Delete the text files so they aren't added to the repo
           rm -f *_files.txt
@@ -123,5 +131,22 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add .
           git commit -m "Sync: Processed repo changes via timestamp and hashing" || echo "No changes to commit"
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
           git push
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Remove unwanted root files
+        run: |
+          # Deletes .py and .txt files in the root directory
+          rm -f ./*.py ./*.txt
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload directly from root (the action automatically ignores .git and .github)
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
