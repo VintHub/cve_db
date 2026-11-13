@@ -1,6 +1,8 @@
 name: Full CVE Build and Deploy
 
 on:
+  schedule:
+    - cron: '0 0 */2 * *'
   workflow_dispatch:
 
 permissions:
