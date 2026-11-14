@@ -809,6 +809,13 @@ def process_cve(
                 else:
                     process_product(a.get("vendor", ""), a.get("product", ""))
 
+    if len(product_map) == 0 and "affected" in cve:
+        for item in cve.get("affected", []):
+            for aff_data in item.get("affectedData", []):
+                pkg = aff_data.get("packageName")
+                if pkg:
+                    add_product(capitalize(process_string(pkg)))
+
     if len(product_map) == 0 and "configurations" in cve:
         for node in cve.get("configurations", []):
             for n in node.get("nodes", []):
