@@ -704,6 +704,72 @@ def tools_pocs(cve_source: CveSource, *, base_repos: str = DEFAULT_BASE_REPOS,
     return _close_cve(ctx, save, output_path)
 
 
+CISA_COORDINATOR_DECISIONS_TABLE = [
+    {"Exploitation": "none", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "medium", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "high", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "medium", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "high", "Decision": "Track*"},
+    {"Exploitation": "none", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "medium", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "high", "Decision": "Attend"},
+    {"Exploitation": "none", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "medium", "Decision": "Track"},
+    {"Exploitation": "none", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "high", "Decision": "Attend"},
+    {"Exploitation": "poc", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "poc", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "medium", "Decision": "Track"},
+    {"Exploitation": "poc", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "high", "Decision": "Track*"},
+    {"Exploitation": "poc", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "poc", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "medium", "Decision": "Track*"},
+    {"Exploitation": "poc", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "high", "Decision": "Attend"},
+    {"Exploitation": "poc", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "poc", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "medium", "Decision": "Track"},
+    {"Exploitation": "poc", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "high", "Decision": "Attend"},
+    {"Exploitation": "poc", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "poc", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "medium", "Decision": "Track*"},
+    {"Exploitation": "poc", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "high", "Decision": "Attend"},
+    {"Exploitation": "active", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "active", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "medium", "Decision": "Track"},
+    {"Exploitation": "active", "Automatable": "no", "Technical Impact": "partial", "Mission & Well-being": "high", "Decision": "Attend"},
+    {"Exploitation": "active", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "low", "Decision": "Track"},
+    {"Exploitation": "active", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "medium", "Decision": "Attend"},
+    {"Exploitation": "active", "Automatable": "no", "Technical Impact": "total", "Mission & Well-being": "high", "Decision": "Act"},
+    {"Exploitation": "active", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "low", "Decision": "Attend"},
+    {"Exploitation": "active", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "medium", "Decision": "Attend"},
+    {"Exploitation": "active", "Automatable": "yes", "Technical Impact": "partial", "Mission & Well-being": "high", "Decision": "Act"},
+    {"Exploitation": "active", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "low", "Decision": "Attend"},
+    {"Exploitation": "active", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "medium", "Decision": "Act"},
+    {"Exploitation": "active", "Automatable": "yes", "Technical Impact": "total", "Mission & Well-being": "high", "Decision": "Act"},
+]
+
+_SSVC_DECISION_LOOKUP = {
+    (
+        row["Exploitation"].lower(),
+        row["Automatable"].lower(),
+        row["Technical Impact"].lower(),
+        row["Mission & Well-being"].lower(),
+    ): row["Decision"]
+    for row in CISA_COORDINATOR_DECISIONS_TABLE
+}
+
+
+def get_ssvc_decisions(ssvc_meta: Dict[str, Any]) -> Dict[str, str]:
+    exp = str(ssvc_meta.get("Exploitation") or ssvc_meta.get("exploitation") or "").strip().lower()
+    auto = str(ssvc_meta.get("Automatable") or ssvc_meta.get("automatable") or "").strip().lower()
+    tech = str(ssvc_meta.get("Technical Impact") or ssvc_meta.get("technical_impact") or "").strip().lower()
+
+    if not exp or not auto or not tech:
+        return {}
+
+    decisions: Dict[str, str] = {}
+    for level in ("low", "medium", "high"):
+        decision = _SSVC_DECISION_LOOKUP.get((exp, auto, tech, level))
+        if decision:
+            decisions[f"Mission & Well-being - {level.capitalize()}"] = decision
+    return decisions
+
+
 # --- News ---------------------------------------------------------------------
 
 def news(cve_source: CveSource, *, base_repos: str = DEFAULT_BASE_REPOS,
@@ -1218,6 +1284,8 @@ def process_cve(
         ssvc_meta["technical_impact"] = capitalize(tech_label)
         ssvc_vec = f"CISA:2.0.3/E:{exploitation}/A:{automatable}/T:{technical_impact}"
 
+    ssvc_decisions = get_ssvc_decisions(ssvc_meta)
+
     # BOD SLA
     bod_sla_public = "N/A"
     bod_sla_internal = "N/A"
@@ -1282,7 +1350,8 @@ def process_cve(
         "cwe": cwe_list,
         "capec": capec_list,
         "ssvc": {
-            "factors": ssvc_meta
+            "factors": ssvc_meta,
+            "decisions": ssvc_decisions
         },
         "bod_sla": {
             "public": bod_sla_public,
