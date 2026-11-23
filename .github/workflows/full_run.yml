@@ -108,6 +108,9 @@ jobs:
           # Deletes .py and .txt files in the root directory
           rm -f ./*.py ./*.txt
 
+          # Create 404 page at site root
+          echo "VintHub - Not Found" > 404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
