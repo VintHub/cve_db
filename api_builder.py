@@ -1235,18 +1235,23 @@ def process_cve(
         parts = []
         for o in ssvc_data["options"]:
             for l, val in o.items():
+                label_key = str(l).strip().lower().replace(" ", "_")
                 current_val = val
-                if l == "Exploitation":
+                if label_key == "exploitation":
                     current_exploit = current_val.lower()
                     if current_exploit == "none" and len(final_pocs) > 0:
                         current_val = "poc"
                     if is_kev and (current_val.lower() == "poc" or current_val.lower() == "none"):
                         current_val = "active"
-                        
-                ssvc_meta[l] = current_val.capitalize()
-                if l in ssvc_map:
-                    v_mapped = ssvc_map[l]["values"].get(current_val.lower(), current_val[0].upper())
-                    parts.append(f"{ssvc_map[l]['key']}:{v_mapped}")
+
+                ssvc_meta[label_key] = current_val.capitalize()
+                mapped_factor = next(
+                    (cfg for k, cfg in ssvc_map.items() if k.lower().replace(" ", "_") == label_key),
+                    None,
+                )
+                if mapped_factor:
+                    v_mapped = mapped_factor["values"].get(current_val.lower(), current_val[0].upper())
+                    parts.append(f"{mapped_factor['key']}:{v_mapped}")
                     
         role = "CISA" if ssvc_data.get("role") == "CISA Coordinator" else ssvc_data.get("role", "-")
         version = ssvc_data.get("version", "-")
