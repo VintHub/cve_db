@@ -50,8 +50,14 @@ jobs:
           )
 
           for REPO in "${REPOS[@]}"; do
-            echo "Downloading ${REPO}..."
-            curl -sL "https://github.com/lucacapacci/${REPO}/archive/refs/heads/main.zip" -o "${REPO}.zip"
+            if [ "${REPO}" = "cve_news" ]; then
+              OWNER="VintHub"
+            else
+              OWNER="lucacapacci"
+            fi
+
+            echo "Downloading ${REPO} from ${OWNER}..."
+            curl -sL "https://github.com/${OWNER}/${REPO}/archive/refs/heads/main.zip" -o "${REPO}.zip"
             
             echo "Extracting ${REPO}..."
             unzip -q "${REPO}.zip"
