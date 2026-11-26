@@ -203,7 +203,7 @@ print(f"PRODUCT_FROM_CISA_KEV count: {len(PRODUCT_FROM_CISA_KEV)}")
 print(f"CISA_KEV_FIELDS count: {len(CISA_KEV_FIELDS)}")
 
 print(f"GITHUB_POCS count: {len(GITHUB_POCS)}")
-print(f"TOOLS_POCS count: {len(GITHUB_POCS)}")
+print(f"TOOLS_POCS count: {len(TOOLS_POCS)}")
 
 print(f"NEWS count: {len(NEWS)}")
 
