@@ -24,10 +24,12 @@ def process_single_cve(cve_id: str, output_parent_dir: str):
 
     try:
         local_repos_copy = "./repos"
+        local_news_dir = os.path.join(local_repos_copy, "cve_news", "cves")
         
         json_output = process_cve(
-            cve_id, 
-            base_repos=local_repos_copy
+            cve_id,
+            base_repos=local_repos_copy,
+            base_news=local_news_dir
         )
         
         # Create the year directory if it doesn't exist
