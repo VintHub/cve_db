@@ -30,7 +30,7 @@ jobs:
           REPOS=(
             "lucacapacci/nvd"
             "lucacapacci/cvelistV5"
-            "lucacapacci/cve_news"
+            "VintHub/cve_news"
             "lucacapacci/PoC-in-GitHub"
             "lucacapacci/ghsa_cve"
             "lucacapacci/redhat_vex"
