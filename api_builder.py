@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 import gzip
 import csv
-
+import time
 
 def capitalize(s: str) -> str:
     if not s:
@@ -128,27 +128,43 @@ def reconstruct_nvd_style_data(rh_cvss: dict) -> dict:
         "availabilityImpact": rh_cvss.get("availabilityImpact") or rh_cvss.get("availability_impact")
     }
 
-def fetch_json(url: str) -> Optional[dict]:
+def _fetch_remote_bytes(url: str, *, retries: int = 3, backoff: float = 0.5, timeout: int = 10) -> Optional[bytes]:
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                return response.read()
+        except urllib.error.HTTPError as e:
+            if e.code in RETRYABLE_HTTP_CODES and attempt < retries:
+                time.sleep(backoff * (2 ** attempt))
+                continue
+            return None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            if attempt < retries:
+                time.sleep(backoff * (2 ** attempt))
+                continue
+            return None
+    return None
+
+
+def fetch_json(url: str, *, retries: int = 3, backoff: float = 0.5) -> Optional[dict]:
     try:
         if url.startswith("http://") or url.startswith("https://"):
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=10) as response:
-                return json.loads(response.read().decode())
-        else:
-            with open(url, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            raw = _fetch_remote_bytes(url, retries=retries, backoff=backoff)
+            return json.loads(raw.decode("utf-8")) if raw is not None else None
+        with open(url, "r", encoding="utf-8") as f:
+            return json.load(f)
     except Exception:
         return None
 
-def fetch_text(url: str) -> Optional[str]:
+
+def fetch_text(url: str, *, retries: int = 3, backoff: float = 0.5) -> Optional[str]:
     try:
         if url.startswith("http://") or url.startswith("https://"):
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=10) as response:
-                return response.read().decode()
-        else:
-            with open(url, 'r', encoding='utf-8') as f:
-                return f.read()
+            raw = _fetch_remote_bytes(url, retries=retries, backoff=backoff)
+            return raw.decode("utf-8") if raw is not None else None
+        with open(url, "r", encoding="utf-8") as f:
+            return f.read()
     except Exception:
         return None
 
@@ -176,6 +192,11 @@ def fetch_text(url: str) -> Optional[str]:
 
 DEFAULT_BASE_REPOS = "https://lucacapacci.github.io"
 DEFAULT_BASE_RH = "https://raw.githubusercontent.com/lucacapacci/redhat_vex_feed/refs/heads/main"
+DEFAULT_BASE_RH = "https://raw.githubusercontent.com/lucacapacci/redhat_vex_feed/refs/heads/main"
+DEFAULT_BASE_NEWS = "https://raw.githubusercontent.com/VintHub/cve_news/refs/heads/main"
+
+RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
+
 DESCRIPTION_PLACEHOLDER = "Description not available."
 JUNK_PRODUCTS = ('n/a', 'unknown', 'n/a n/a', '*', '')
 
@@ -773,13 +794,14 @@ def get_ssvc_decisions(ssvc_meta: Dict[str, Any]) -> Dict[str, str]:
 # --- News ---------------------------------------------------------------------
 
 def news(cve_source: CveSource, *, base_repos: str = DEFAULT_BASE_REPOS,
+         base_news: str = DEFAULT_BASE_NEWS,
          save: bool = True, output_path: Optional[str] = None) -> Optional[dict]:
     """Add new articles from the news repo to `news` (deduplicated by link, or by title
     when an article has no link), newest first."""
     ctx = _open_cve(cve_source)
     if ctx is None:
         return None
-    news_res = fetch_json(f"{base_repos}/cve_news/cves/{ctx.year}/{ctx.cve_id}.json")
+    news_res = fetch_json(f"{base_news}/cves/{ctx.year}/{ctx.cve_id}.json")
     _merge_news(ctx.data, extract_news(news_res))
     return _close_cve(ctx, save, output_path)
 
@@ -787,7 +809,8 @@ def news(cve_source: CveSource, *, base_repos: str = DEFAULT_BASE_REPOS,
 def process_cve(
     cve_input: str, 
     base_repos: str = DEFAULT_BASE_REPOS,
-    base_rh: str = DEFAULT_BASE_RH
+    base_rh: str = DEFAULT_BASE_RH,
+    base_news: str = DEFAULT_BASE_NEWS
 ) -> str:
     # 1. Parsing input
     cve_id = normalize_cve_id(cve_input)
@@ -806,7 +829,7 @@ def process_cve(
     poc_res = fetch_json(f"{base_repos}/PoC-in-GitHub/{year}/{cve_id}.json")
     cve_project_res = fetch_json(f"{base_repos}/cvelistV5/cves/{year}/{id_prefix}/{cve_id}.json")
     all_pocs_res = fetch_json(f"{base_repos}/pocs/data_single/{year}/{cve_id}.json")
-    news_res = fetch_json(f"{base_repos}/cve_news/cves/{year}/{cve_id}.json")
+    news_res = fetch_json(f"{base_news}/cves/{year}/{cve_id}.json")
 
     kev_cols = parse_kev_csv(kev_res)
 
