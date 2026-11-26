@@ -192,7 +192,6 @@ def fetch_text(url: str, *, retries: int = 3, backoff: float = 0.5) -> Optional[
 
 DEFAULT_BASE_REPOS = "https://lucacapacci.github.io"
 DEFAULT_BASE_RH = "https://raw.githubusercontent.com/lucacapacci/redhat_vex_feed/refs/heads/main"
-DEFAULT_BASE_RH = "https://raw.githubusercontent.com/lucacapacci/redhat_vex_feed/refs/heads/main"
 DEFAULT_BASE_NEWS = "https://raw.githubusercontent.com/VintHub/cve_news/refs/heads/main"
 
 RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
