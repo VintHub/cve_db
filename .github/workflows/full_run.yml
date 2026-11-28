@@ -47,6 +47,8 @@ jobs:
             "pocs"
             "cisa_kev"
             "epss"
+            "ghsa_cve_id"
+            "euvd_cve_id"
           )
 
           for REPO in "${REPOS[@]}"; do
