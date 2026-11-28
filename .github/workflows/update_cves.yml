@@ -37,6 +37,8 @@ jobs:
             "lucacapacci/pocs"
             "lucacapacci/cisa_kev"
             "lucacapacci/epss"
+            "ghsa_cve_id"
+            "euvd_cve_id"
           )
 
           # 1. Get last timestamp or default to 1 hour ago (ISO 8601 format)
